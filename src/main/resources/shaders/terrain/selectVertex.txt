@@ -1,0 +1,13 @@
+#version 440 core
+
+layout (location=0) in vec3 vertex;
+out vec4 outData;
+
+uniform vec3 blockPos;
+uniform mat4 viewMatrix;
+uniform mat4 projectionMatrix;
+
+void main(void){
+    gl_Position = projectionMatrix * viewMatrix * vec4(blockPos.x+vertex.x, blockPos.y+vertex.y, blockPos.z+vertex.z, 1.0);
+    outData = vec4(0.3,0.3,0.3,0.5);
+}

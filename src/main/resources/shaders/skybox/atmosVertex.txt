@@ -1,0 +1,16 @@
+#version 150
+
+//Globals
+uniform mat4 proj;
+uniform mat4 view;
+
+//Inputs
+in vec3 in_pos;
+
+//Outputs
+out vec3 ex_normal;
+
+void main(void) {
+	gl_Position = proj * view * vec4(in_pos, 1.0);
+	ex_normal = normalize(in_pos);
+}

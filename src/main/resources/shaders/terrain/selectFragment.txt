@@ -1,0 +1,9 @@
+#version 440 core
+
+in vec4 outData;
+
+out vec4 out_Colour;
+
+void main(void){
+    out_Colour = outData;
+}

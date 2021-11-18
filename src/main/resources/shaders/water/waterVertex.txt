@@ -1,0 +1,55 @@
+#version 440 core
+
+layout (location=0) in uint inVertexData;
+
+out float visibility;
+out vec4 clipSpace;
+out vec2 textureCoords;
+out vec3 toLightVector;
+out vec3 toCameraVector;
+out vec4 vertexPos;
+out mat4 modelViewMatrix;
+out vec3 worldPos;
+
+
+uniform mat4 viewMatrix;
+uniform mat4 transformationMatrix;
+uniform bool isEyeInWater;
+uniform mat4 projectionMatrix;
+uniform vec3 lightPosition;
+uniform float time;
+uniform vec3 cameraPos;
+
+out float time_f;
+uniform vec4 plane;
+
+const float tiling = 0.1;
+
+//fog constants
+const float density = 0.004;
+const float gradient = 3;
+
+
+
+void main(void){
+    float x = float(inVertexData & 0x3Fu);
+    float y = float((inVertexData & 0xFC0u) >> 6u);
+    float z = float((inVertexData & 0x3F000u) >> 12u);
+    vec3 position = vec3(x,y,z);
+    vec4 worldPosition = transformationMatrix * vec4(position.x,position.y-0.3,position.z, 1);
+    gl_ClipDistance[0] = dot(worldPosition, plane);
+    vec4 positionRelativeToCam = viewMatrix *  worldPosition;
+    modelViewMatrix = transformationMatrix * viewMatrix;
+    clipSpace = projectionMatrix * positionRelativeToCam;
+    gl_Position = clipSpace + time*0;
+    time_f = time;
+    worldPos = worldPosition.xyz;
+    toLightVector = lightPosition - worldPosition.xyz;
+    toCameraVector = cameraPos - worldPosition.xyz;
+    vertexPos = vec4(x,y,z,1);
+    float distance = length(positionRelativeToCam.xyz);
+    visibility = exp(-pow((distance*density), gradient));
+    visibility = clamp(visibility, 0.0, 1.0);
+
+    textureCoords = vec2(position.x/2.0 + 0.5, position.z/2.0 + 0.5) * tiling;
+}

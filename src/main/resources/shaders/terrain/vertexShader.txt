@@ -1,0 +1,101 @@
+#version 440 core
+
+layout (location = 0) in uint inVertexData;
+
+out vec3 outTexCoord;
+out float lightOffset;
+out vec4 outGrassColor;
+out float distance;
+out vec3 outWorldPos;
+out vec3 normal;
+
+uniform mat4 viewMatrix;
+uniform mat4 transformationMatrix;
+uniform mat4 projectionMatrix;
+uniform vec3 lightPosition;
+uniform vec3 grassColor;
+uniform bool isEyeInWater;
+uniform float time;
+uniform float perChunkTime;
+uniform vec3 cameraPos;
+
+//fog constants
+
+
+uniform vec4 plane;
+
+vec2 texCoords[4] = vec2[4](
+    vec2(0.0f, 0.0f),
+    vec2(1.0f, 0.0f),
+    vec2(1.0f, 1.0f),
+    vec2(0.0f, 1.0f)
+);
+
+vec3 normals[6] = vec3[6](
+        vec3(1,0,0),  //front
+        vec3(0,0,-1),  //left
+        vec3(-1,0,0), //back
+        vec3(0,0,1),  //right
+        vec3(0,1,0),  //top
+        vec3(0,-1,0) //bottom
+);
+
+float lightOffsets[6] = float[6](
+        4,  //front
+        3,  //left
+        4, //back
+        3,  //right
+        5,  //top
+        2 //bottom
+);
+
+vec4 createWindOffset(vec3 position)
+{
+    position.y += sin((time + position.x) * 1.5) / 32.0f;
+    position.x += cos((time + position.z) * 1.5) / 32.0f;
+    position.z += sin((time + position.z) * 1.5) / 32.0f;
+    return vec4(position, 1.0);
+}
+
+void main(void){
+    mat4 terrainMatrix = mat4(
+          viewMatrix[0],
+          viewMatrix[1],
+          viewMatrix[2],
+          vec4(0.0, 0.0, 0.0, 1.0));
+
+    mat4 transformationMatrix2 = transformationMatrix;
+    transformationMatrix2[3][0] = transformationMatrix[3][0] + cameraPos.x;
+    transformationMatrix2[3][1] = transformationMatrix[3][1] + cameraPos.y;
+    transformationMatrix2[3][2] = transformationMatrix[3][2] + cameraPos.z;
+
+
+    float x = float(inVertexData & 0x3Fu);
+    float y = perChunkTime / 150 * float((inVertexData & 0xFC0u) >> 6u);
+    float z = float((inVertexData & 0x3F000u) >> 12u);
+    uint layer = (inVertexData & 0xFF800000u) >> 23u;
+    vec3 position = vec3(x,y,z);
+    vec4 worldPosition2 = transformationMatrix2 * vec4(position.x,position.y-0.3,position.z, 1);
+    vec4 worldPosition;
+    if(layer == 12 || layer == 18 || layer == 19 || layer == 20 || layer == 21 || layer == 22){
+        worldPosition = transformationMatrix * createWindOffset(position);
+    }
+    else{
+        worldPosition = transformationMatrix * vec4(position,1);
+    }
+    outWorldPos = worldPosition2.xyz;
+
+    gl_ClipDistance[0] = dot(worldPosition2, plane);
+    vec4 positionRelativeToCam = terrainMatrix *  worldPosition;
+    gl_Position = projectionMatrix * positionRelativeToCam;
+
+    uint index = (inVertexData & 0x600000u) >> 21u;
+	outTexCoord = vec3(texCoords[index] , float(layer));
+
+    int faceIndex  = int((inVertexData & 0x1C0000u) >> 18u);
+    normal = normals[faceIndex];
+    lightOffset = lightOffsets[faceIndex] / 5.0;
+    distance = length(positionRelativeToCam.xyz);
+
+    outGrassColor = vec4(grassColor, 1);
+}
